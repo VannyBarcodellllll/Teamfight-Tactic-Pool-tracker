@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFT Comp Recommender</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1f2937;
+      --border: #374151;
+      --accent: #c89b3c;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warn: #f59e0b;
+      --r: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--accent);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    header h1 { color: var(--accent); font-size: 1.3rem; white-space: nowrap; letter-spacing: 0.5px; }
+    nav { display: flex; gap: 4px; }
+    nav button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 8px 18px;
+      cursor: pointer;
+      border-radius: var(--r);
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    nav button:hover { background: var(--surface2); color: var(--text); }
+    nav button.active { background: var(--accent); color: #000; font-weight: 700; }
+
+    /* ── Main ── */
+    main { padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
+    section { display: none; }
+    section.active { display: block; }
+
+    /* ── Section header ── */
+    .sh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .sh h2 { color: var(--accent); font-size: 1.15rem; }
+    .hint { color: var(--muted); font-size: 0.82rem; margin-bottom: 16px; }
+
+    /* ── Buttons ── */
+    .btn { padding: 8px 16px; border-radius: var(--r); border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.82; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); opacity: 1; }
+    .btn-sm { padding: 4px 9px; font-size: 0.72rem; }
+
+    /* ── Grids ── */
+    .unit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+    .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 14px; }
+
+    /* ── Unit card ── */
+    .unit-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px 8px;
+      text-align: center;
+      position: relative;
+    }
+    .unit-card img {
+      width: 68px; height: 68px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: block;
+      margin: 0 auto 8px;
+      background: var(--bg);
+    }
+    .unit-card .uname { font-size: 0.78rem; font-weight: 600; }
+    .unit-card .ucost { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+    .card-actions { display: none; position: absolute; top: 4px; right: 4px; gap: 3px; }
+    .unit-card:hover .card-actions { display: flex; }
+
+    /* ── Comp card ── */
+    .comp-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+      position: relative;
+    }
+    .comp-card .cimg {
+      width: 100%; height: 95px;
+      object-fit: cover;
+      border-radius: 5px;
+      background: var(--bg);
+      display: block;
+    }
+    .comp-card .cname { font-weight: 700; font-size: 0.9rem; margin-top: 8px; }
+    .comp-card .ctier { font-size: 0.72rem; font-weight: 700; margin-top: 3px; }
+    .comp-card .cunit-row { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 8px; }
+    .comp-card .cunit-row img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--bg); }
+    .comp-card:hover .card-actions { display: flex; }
+
+    /* ── Pool tracker ── */
+    .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 12px; }
+    .pool-card {
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: var(--r);
+      padding: 10px 8px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .pool-card img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 5px; background: var(--bg); }
+    .pool-card .pname { font-size: 0.72rem; font-weight: 600; margin-bottom: 5px; }
+    .pool-card.avail  { border-color: var(--success); }
+    .pool-card.mid    { border-color: var(--warn); }
+    .pool-card.scarce { border-color: var(--danger); }
+    .pool-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
+    .pbtn {
+      width: 22px; height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s;
+    }
+    .pbtn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+    .pool-input {
+      width: 34px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      text-align: center;
+      font-size: 0.88rem;
+      padding: 2px 0;
+    }
+    .pool-input:focus { outline: none; border-color: var(--accent); }
+    .pool-max { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
+
+    /* ── Recommendations ── */
+    .rec-list { display: flex; flex-direction: column; gap: 12px; }
+    .rec-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .rec-rank { font-size: 1.4rem; font-weight: 800; color: var(--accent); min-width: 30px; padding-top: 2px; }
+    .rec-img { width: 72px; height: 54px; object-fit: cover; border-radius: 5px; background: var(--bg); flex-shrink: 0; }
+    .rec-body { flex: 1; }
+    .rec-name { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+    .rec-bar-wrap { height: 5px; background: var(--border); border-radius: 3px; margin: 7px 0 3px; overflow: hidden; }
+    .rec-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    .rec-pct { font-size: 0.72rem; color: var(--muted); }
+    .rec-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .chip {
+      display: flex; align-items: center; gap: 3px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .chip.red { border-color: var(--danger); color: var(--danger); }
+    .chip img { width: 14px; height: 14px; border-radius: 50%; }
+
+    /* ── Tier colors ── */
+    .tier-S { color: #ff4d4d; }
+    .tier-A { color: #ff8c00; }
+    .tier-B { color: #ffd700; }
+    .tier-C { color: var(--muted); }
+
+    /* ── Cost colors ── */
+    .c1 { color: #aaa; } .c2 { color: #22c55e; } .c3 { color: #60a5fa; }
+    .c4 { color: #a855f7; } .c5 { color: var(--warn); }
+
+    /* ── Forms ── */
+    .fg { margin-bottom: 14px; }
+    .fg label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; }
+    .fg input, .fg select, .fg textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 8px 11px;
+      color: var(--text);
+      font-size: 0.88rem;
+    }
+    .fg input:focus, .fg select:focus { outline: none; border-color: var(--accent); }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* ── Unit selector in comp form ── */
+    .unit-sel {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+      gap: 6px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+    .usel-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 7px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      background: var(--surface);
+      transition: all 0.13s;
+      user-select: none;
+    }
+    .usel-chip:hover { border-color: var(--accent); }
+    .usel-chip.sel { border-color: var(--accent); background: rgba(200,155,60,0.14); }
+    .usel-chip img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--bg); }
+    .usel-chip span { font-size: 0.66rem; text-align: center; line-height: 1.2; }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 22px;
+      width: 540px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .mhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .mhead h3 { color: var(--accent); font-size: 1.05rem; }
+    .mfoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    /* ── Image upload area ── */
+    .img-upload { display: flex; gap: 12px; align-items: flex-start; }
+    .img-preview { width: 74px; height: 74px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); }
+    .img-preview.wide { width: 130px; height: 65px; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; color: var(--muted); padding: 52px 24px; font-size: 0.88rem; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Traits ── */
+    .trait-badges { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 4px; }
+    .trait-badge { font-size: 0.58rem; padding: 1px 5px; border-radius: 3px; background: rgba(200,155,60,0.12); border: 1px solid rgba(200,155,60,0.35); color: var(--accent); white-space: nowrap; }
+    .usel-chip .trait-badges { margin-top: 2px; }
+    .usel-chip .trait-badge  { font-size: 0.55rem; padding: 1px 3px; }
+
+    /* ── Scout panel ── */
+    .scout-table { width: 100%; border-collapse: collapse; }
+    .scout-table th { font-size: 0.75rem; color: var(--muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .scout-row { border-bottom: 1px solid var(--border); }
+    .scout-row:last-child { border-bottom: none; }
+    .scout-row td { padding: 7px 10px; vertical-align: middle; }
+    .scout-name { background: none; border: none; color: var(--text); font-size: 0.85rem; font-weight: 600; width: 60px; cursor: text; }
+    .scout-name:focus { outline: 1px solid var(--accent); border-radius: 3px; }
+    .scout-comp-sel { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 0.82rem; padding: 4px 8px; width: 100%; }
+    .scout-comp-sel:focus { outline: none; border-color: var(--accent); }
+    .scout-units { display: flex; gap: 3px; flex-wrap: wrap; }
+    .scout-units img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: var(--bg); }
+    .contested-box { margin-top: 20px; }
+    .contested-box h4 { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+    .contested-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cont-chip { display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; background: var(--surface2); border: 1px solid var(--border); }
+    .cont-chip img { width: 18px; height: 18px; border-radius: 50%; }
+    .cont-chip .cnt { font-weight: 700; color: var(--danger); }
+
+    /* ── My Units stars ── */
+    .star-row { display: flex; justify-content: center; gap: 3px; margin-top: 5px; }
+    .star { font-size: 0.9rem; cursor: pointer; transition: transform 0.1s; line-height: 1; }
+    .star:hover { transform: scale(1.3); }
+    .star.on { color: var(--accent); }
+    .star.off { color: var(--border); }
+
+    /* ── Rec enhancements ── */
+    .rec-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 3px; }
+    .badge-opp { font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; background: rgba(239,68,68,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: 600; }
+    .badge-own { font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; background: rgba(200,155,60,0.12); border: 1px solid rgba(200,155,60,0.4); color: var(--accent); }
+    .chip.owned { border-color: var(--accent); }
+
+    /* ── Header util buttons ── */
+    .header-utils { margin-left: auto; display: flex; gap: 6px; }
+
+    /* ── Unit star selector (comp editor) ── */
+    .usel-stars { display: none; justify-content: center; gap: 1px; margin-top: 2px; }
+    .usel-chip.sel .usel-stars { display: flex; }
+    .usel-stars .ustar { font-size: 0.82rem; cursor: pointer; color: var(--border); line-height: 1; transition: color 0.1s; }
+    .usel-stars .ustar.on { color: var(--accent); }
+    .usel-stars .ustar:hover { color: var(--accent); opacity: 0.7; }
+
+    /* ── Unit star overlay on comp card ── */
+    .cunit-slot { position: relative; display: inline-block; }
+    .cunit-star-label {
+      position: absolute; bottom: -1px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.42rem; color: var(--accent);
+      white-space: nowrap; pointer-events: none; line-height: 1;
+      text-shadow: 0 0 3px #000;
+    }
+
+    /* ── Crop modal ── */
+    #crop-overlay { z-index: 300; }
+    #crop-box { max-height: 440px; overflow: hidden; background: #000; border-radius: 6px; }
+    #crop-box img { display: block; max-width: 100%; }
+    .crop-tools { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .crop-tools .btn { font-size: 0.78rem; padding: 5px 11px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#9876; TFT Comp Recommender</h1>
+  <nav>
+    <button onclick="tab('units')"  data-t="units"  class="active">Units</button>
+    <button onclick="tab('comps')"  data-t="comps">Comps</button>
+    <button onclick="tab('pool')"   data-t="pool">Pool Tracker</button>
+    <button onclick="tab('scout')"  data-t="scout">Scout</button>
+    <button onclick="tab('rec')"    data-t="rec">Recommendations</button>
+  </nav>
+  <div class="header-utils">
+    <button class="btn btn-ghost btn-sm" onclick="exportData()" title="Export all data to JSON file">&#8679; Export</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Import data from JSON file">
+      &#8681; Import<input type="file" accept=".json" style="display:none" onchange="importData(event)">
+    </label>
+  </div>
+</header>
+
+<main>
+  <section id="tab-units" class="active">
+    <div class="sh">
+      <h2>Unit Manager</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="openImportModal()">&#9881; Import from Community Dragon</button>
+        <button class="btn btn-primary" onclick="openUnit(null)">+ Add Unit</button>
+      </div>
+    </div>
+    <div id="unit-grid" class="unit-grid"></div>
+  </section>
+
+  <section id="tab-comps">
+    <div class="sh">
+      <h2>Comp Manager</h2>
+      <button class="btn btn-primary" onclick="openComp(null)">+ Add Comp</button>
+    </div>
+    <div id="comp-grid" class="comp-grid"></div>
+  </section>
+
+  <section id="tab-pool">
+    <div class="sh">
+      <h2>Pool Tracker</h2>
+      <button class="btn btn-ghost" onclick="resetPool()">&#x21BA; Reset Pool</button>
+    </div>
+    <p class="hint">Track remaining copies in pool. Stars (&#9733;&#9733;&#9733;) = copies you personally own. Red &lt;30%, Yellow 30-60%, Green &gt;60%.</p>
+    <div id="pool-grid" class="pool-grid"></div>
+  </section>
+
+  <section id="tab-scout">
+    <div class="sh">
+      <h2>Scout Lobby</h2>
+      <button class="btn btn-ghost" onclick="resetScout()">&#x21BA; Clear All</button>
+    </div>
+    <p class="hint">Mark what each opponent is playing. Updates the recommendation scores automatically.</p>
+    <div id="scout-body"></div>
+  </section>
+
+  <section id="tab-rec">
+    <div class="sh">
+      <h2>Comp Recommendations</h2>
+      <button class="btn btn-ghost" onclick="renderRec()">&#x21BB; Refresh</button>
+    </div>
+    <p class="hint">Score = pool availability + tier bonus + your owned units bonus − opponent contestedness. Red chips = scarce. Gold chips = you own them.</p>
+    <div id="rec-list" class="rec-list"></div>
+  </section>
+</main>
+
+<!-- Main modal -->
+<div id="overlay" class="overlay" style="display:none">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- Crop modal -->
+<div id="crop-overlay" class="overlay" style="display:none">
+  <div class="modal" style="width:640px">
+    <div class="mhead">
+      <h3>&#9986; Crop Image</h3>
+      <button class="btn btn-sm btn-ghost" onclick="cropCancel()">&#x2715;</button>
+    </div>
+    <div id="crop-box"><img id="crop-img"></div>
+    <div class="crop-tools">
+      <button class="btn btn-ghost" onclick="cropRotate(-90)">&#8635; Rotate L</button>
+      <button class="btn btn-ghost" onclick="cropRotate(90)">&#8634; Rotate R</button>
+      <button class="btn btn-ghost" onclick="cropFlip('x')">&#8596; Flip H</button>
+      <button class="btn btn-ghost" onclick="cropFlip('y')">&#8597; Flip V</button>
+      <button class="btn btn-ghost" onclick="cropReset()">&#x21BA; Reset</button>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="cropCancel()">Cancel</button>
+      <button class="btn btn-primary" onclick="cropConfirm()">&#10003; Use Cropped Image</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+// ════════════════════════════════════════
+// STATE & PERSISTENCE
+// ════════════════════════════════════════
+const POOL_DEFAULT  = { 1: 30, 2: 25, 3: 18, 4: 10, 5: 9 };
+const TIER_BONUS    = { S: 0.15, A: 0.10, B: 0.05, C: 0 };
+const STAR_COPIES   = { 1: 1, 2: 3, 3: 9 }; // copies needed to reach each star level
+
+function defaultScout() {
+  return Array.from({ length: 7 }, (_, i) => ({ name: `P${i+1}`, compId: null }));
+}
+
+let S = { units: [], comps: [], pool: {}, myUnits: {}, scout: defaultScout() };
+
+function persist() {
+  localStorage.setItem('tft-cr', JSON.stringify(S));
+}
+
+function hydrate() {
+  try {
+    const d = JSON.parse(localStorage.getItem('tft-cr') || '{}');
+    if (d.units)    S.units    = d.units;
+    if (d.comps)    S.comps    = d.comps;
+    if (d.pool)     S.pool     = d.pool;
+    if (d.myUnits)  S.myUnits  = d.myUnits;
+    if (d.scout)    S.scout    = d.scout;
+  } catch(e) {}
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════
+function tab(name) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.t === name));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'rec')   renderRec();
+  if (name === 'pool')  renderPool();
+  if (name === 'scout') renderScout();
+}
+
+function sortedUnits() {
+  return [...S.units].sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
+}
+
+// ════════════════════════════════════════
+// PLACEHOLDER IMAGE
+// ════════════════════════════════════════
+function placeholder(w, h, label) {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'%3E%3Crect width='${w}' height='${h}' fill='%231f2937'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%236b7280' font-size='${Math.min(w,h)*0.3}' font-family='sans-serif'%3E${encodeURIComponent(label)}%3C/text%3E%3C/svg%3E`;
+}
+
+function imgSrc(src, w, h) {
+  return src && src.length > 1 ? src : placeholder(w, h, '?');
+}
+
+// ════════════════════════════════════════
+// UNITS
+// ════════════════════════════════════════
+function renderUnits() {
+  const g = document.getElementById('unit-grid');
+  if (!S.units.length) { g.innerHTML = '<div class="empty">No units yet — click "+ Add Unit" to start.</div>'; return; }
+  g.innerHTML = sortedUnits().map(u => `
+    <div class="unit-card">
+      <img src="${imgSrc(u.image,68,68)}" alt="${esc(u.name)}" data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">
+      <div class="uname">${esc(u.name)}</div>
+      <div class="ucost c${u.cost}">${'&#x2B22;'.repeat(u.cost)}&nbsp;(${u.poolSize})</div>
+      <div class="trait-badges">${(u.traits||[]).map(t=>`<span class="trait-badge">${esc(t)}</span>`).join('')}</div>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-ghost" onclick="openUnit('${u.id}')">&#9998;</button>
+        <button class="btn btn-sm btn-danger" onclick="delUnit('${u.id}')">&#x2715;</button>
+      </div>
+    </div>`).join('');
+}
+
+function delUnit(id) {
+  if (!confirm('Delete this unit?')) return;
+  S.units = S.units.filter(u => u.id !== id);
+  S.comps.forEach(c => c.units = c.units.filter(x => x !== id));
+  delete S.pool[id];
+  persist();
+  renderUnits();
+}
+
+// ════════════════════════════════════════
+// COMPS
+// ════════════════════════════════════════
+function renderComps() {
+  const g = document.getElementById('comp-grid');
+  if (!S.comps.length) { g.innerHTML = '<div class="empty">No comps yet — click "+ Add Comp" to start.</div>'; return; }
+  g.innerHTML = S.comps.map(c => {
+    const units = c.units.map(id => S.units.find(u => u.id === id)).filter(Boolean);
+    return `
+    <div class="comp-card">
+      <img class="cimg" src="${imgSrc(c.image,185,95)}" alt="${esc(c.name)}">
+      <div class="cname">${esc(c.name)}</div>
+      <div class="ctier tier-${c.tier}">${c.tier}-Tier</div>
+      <div class="cunit-row">
+        ${units.map(u => {
+          const star = (c.unitStars && c.unitStars[u.id]) || 1;
+          const starLabel = star > 1 ? `<span class="cunit-star-label">${'★'.repeat(star)}</span>` : '';
+          return `<div class="cunit-slot" title="${esc(u.name)} ${'★'.repeat(star)}">
+            <img src="${imgSrc(u.image,22,22)}" data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">
+            ${starLabel}
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:5px">${units.length} unit${units.length!==1?'s':''}</div>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-ghost" onclick="openComp('${c.id}')">&#9998;</button>
+        <button class="btn btn-sm btn-danger" onclick="delComp('${c.id}')">&#x2715;</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function delComp(id) {
+  if (!confirm('Delete this comp?')) return;
+  S.comps = S.comps.filter(c => c.id !== id);
+  persist();
+  renderComps();
+}
+
+// ════════════════════════════════════════
+// POOL TRACKER
+// ════════════════════════════════════════
+function poolRem(unitId) {
+  const u = S.units.find(u => u.id === unitId);
+  if (!u) return 0;
+  return S.pool[unitId] !== undefined ? S.pool[unitId] : u.poolSize;
+}
+
+function renderPool() {
+  const g = document.getElementById('pool-grid');
+  if (!S.units.length) { g.innerHTML = '<div class="empty">Add units first.</div>'; return; }
+  g.innerHTML = sortedUnits().map(u => {
+    const rem = poolRem(u.id);
+    const pct = rem / u.poolSize;
+    const cls = pct <= 0.30 ? 'scarce' : pct <= 0.60 ? 'mid' : 'avail';
+    return `
+    <div class="pool-card ${cls}">
+      <img src="${imgSrc(u.image,56,56)}" alt="${esc(u.name)}" data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">
+      <div class="pname">${esc(u.name)}</div>
+      <div class="trait-badges" style="margin-bottom:4px">${(u.traits||[]).map(t=>`<span class="trait-badge">${esc(t)}</span>`).join('')}</div>
+      <div class="pool-controls">
+        <button class="pbtn" onclick="adj('${u.id}',-1)">&#8722;</button>
+        <input class="pool-input" type="number" min="0" max="${u.poolSize}" value="${rem}"
+          onchange="setPool('${u.id}',+this.value)" onclick="this.select()">
+        <button class="pbtn" onclick="adj('${u.id}',+1)">+</button>
+      </div>
+      <div class="pool-max">/ ${u.poolSize} remaining</div>
+      <div class="star-row">${[1,2,3].map(n => `<span class="star ${(S.myUnits[u.id]||0)>=n?'on':'off'}" onclick="cycleOwned('${u.id}',${n})">&#9733;</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function adj(id, delta) {
+  const u = S.units.find(u => u.id === id);
+  if (!u) return;
+  S.pool[id] = Math.max(0, Math.min(u.poolSize, poolRem(id) + delta));
+  persist();
+  renderPool();
+  if (document.getElementById('tab-rec').classList.contains('active')) renderRec();
+}
+
+function setPool(id, val) {
+  const u = S.units.find(u => u.id === id);
+  if (!u) return;
+  S.pool[id] = Math.max(0, Math.min(u.poolSize, isNaN(val) ? u.poolSize : val));
+  persist();
+  renderPool();
+}
+
+function resetPool() {
+  if (!confirm('Reset all pool counts to maximum?')) return;
+  S.pool = {};
+  persist();
+  renderPool();
+}
+
+function cycleOwned(unitId, star) {
+  const cur = S.myUnits[unitId] || 0;
+  // clicking the already-top star resets to 0, otherwise set to that star
+  S.myUnits[unitId] = cur === star ? 0 : star;
+  persist();
+  renderPool();
+}
+
+// ════════════════════════════════════════
+// RECOMMENDATIONS
+// ════════════════════════════════════════
+function renderRec() {
+  const el = document.getElementById('rec-list');
+  if (!S.comps.length) { el.innerHTML = '<div class="empty">Add comps to get recommendations.</div>'; return; }
+
+  const scored = S.comps.map(comp => {
+    const units = comp.units.map(id => S.units.find(u => u.id === id)).filter(Boolean);
+
+    // 1. Pool availability — weighted by star level (3★ needs 9 copies, so pool matters more)
+    const base = units.length
+      ? units.reduce((a, u) => {
+          const star   = (comp.unitStars && comp.unitStars[u.id]) || 1;
+          const needed = STAR_COPIES[star] || 1;
+          const rem    = poolRem(u.id);
+          return a + Math.max(0, rem - needed + 1) / u.poolSize;
+        }, 0) / units.length
+      : 1.0;
+
+    // 2. Tier bonus
+    const tierBonus = TIER_BONUS[comp.tier] || 0;
+
+    // 3. My units completion bonus (+0.10 max)
+    const owned    = units.filter(u => (S.myUnits[u.id] || 0) > 0).length;
+    const myBonus  = units.length ? (owned / units.length) * 0.10 : 0;
+
+    // 4. Direct opponent penalty (-0.12 per opponent on same comp)
+    const oppOnSame    = S.scout.filter(p => p.compId === comp.id).length;
+    const oppPenalty   = oppOnSame * 0.12;
+
+    // 5. Unit demand penalty — opponents competing for same units
+    const unitDemand = units.length ? units.reduce((sum, u) => {
+      const demand = S.scout.filter(p => {
+        const oc = S.comps.find(c => c.id === p.compId);
+        return oc && oc.units.includes(u.id);
+      }).length;
+      return sum + demand;
+    }, 0) / (units.length * 7) : 0;
+
+    const score = base + tierBonus + myBonus - oppPenalty - unitDemand * 0.15;
+    return { comp, units, score: Math.max(0, score), base, owned, oppOnSame };
+  }).sort((a, b) => b.score - a.score);
+
+  el.innerHTML = scored.map((item, i) => {
+    const { comp, units, score, base, owned, oppOnSame } = item;
+    const pct   = Math.round(Math.min(score, 1) * 100);
+    const bar   = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+    const medal = i === 0 ? '&#127947;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : `#${i+1}`;
+    const oppBadge  = oppOnSame ? `<span class="badge-opp">&#128373; ${oppOnSame} opponent${oppOnSame>1?'s':''}</span>` : '';
+    const ownBadge  = owned ? `<span class="badge-own">&#9733; ${owned}/${units.length} owned</span>` : '';
+
+    return `
+    <div class="rec-card">
+      <div class="rec-rank">${medal}</div>
+      <img class="rec-img" src="${imgSrc(comp.image,72,54)}" alt="${esc(comp.name)}">
+      <div class="rec-body">
+        <div class="rec-name">
+          ${esc(comp.name)}
+          <span class="tier-${comp.tier}" style="font-size:0.72rem;font-weight:700">${comp.tier}</span>
+        </div>
+        <div class="rec-meta">${oppBadge}${ownBadge}</div>
+        <div class="rec-bar-wrap"><div class="rec-bar" style="width:${pct}%;background:${bar}"></div></div>
+        <div class="rec-pct">Score: <strong>${Math.round(score*100)}%</strong> &nbsp;·&nbsp; Pool: ${Math.round(base*100)}%</div>
+        <div class="rec-chips">
+          ${units.map(u => {
+            const rem      = poolRem(u.id);
+            const star     = (comp.unitStars && comp.unitStars[u.id]) || 1;
+            const needed   = STAR_COPIES[star] || 1;
+            const scarce   = rem < needed * 2;
+            const isOwned  = (S.myUnits[u.id] || 0) > 0;
+            const ownedStr = isOwned ? ` <span style="color:var(--accent)">&#9733;x${S.myUnits[u.id]}</span>` : '';
+            const starStr  = star > 1 ? `<span style="color:var(--warn);font-size:0.6rem">${'★'.repeat(star)}</span> ` : '';
+            const traitStr = (u.traits||[]).length ? `<span style="color:var(--muted);font-size:0.62rem"> · ${u.traits.join(', ')}</span>` : '';
+            return `<span class="chip ${scarce?'red':''} ${isOwned?'owned':''}"><img src="${imgSrc(u.image,14,14)}">${starStr}${esc(u.name)}${ownedStr}&nbsp;(${rem})${traitStr}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// MODAL — UNIT FORM
+// ════════════════════════════════════════
+let _editId    = null;
+let _editStars = {};
+
+function openUnit(id) {
+  _editId = id;
+  const u = id ? S.units.find(x => x.id === id) : null;
+  showModal(`
+    <div class="mhead">
+      <h3>${u ? 'Edit' : 'Add'} Unit</h3>
+      <button class="btn btn-sm btn-ghost" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="fg">
+      <label>Unit Name *</label>
+      <input id="f-uname" placeholder="e.g. Jinx" value="${u ? esc(u.name) : ''}">
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label>Cost Tier</label>
+        <select id="f-ucost" onchange="autoCostPool()">
+          ${[1,2,3,4,5].map(c => `<option value="${c}"${u&&u.cost==c?' selected':''}>&#x2B22; ${c}-cost</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Pool Size</label>
+        <input id="f-upool" type="number" min="1" max="99" value="${u ? u.poolSize : 30}">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Traits <span style="font-weight:400;font-size:0.78rem">(comma-separated, e.g. Rebel, Sorcerer)</span></label>
+      <input id="f-utraits" placeholder="e.g. Rebel, Sorcerer" value="${u && u.traits ? esc(u.traits.join(', ')) : ''}">
+    </div>
+    <div class="fg">
+      <label>Image</label>
+      <div class="img-upload">
+        <img id="prev-u" class="img-preview" src="${u ? imgSrc(u.image,74,74) : placeholder(74,74,'?')}">
+        <div style="flex:1">
+          <input type="file" accept="image/*" id="file-u" style="display:none" onchange="filePreview('file-u','prev-u','url-u',1)">
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="document.getElementById('file-u').click()">&#128247; Upload Image</button>
+          <input id="url-u" placeholder="Or paste an image URL" value="${u && u.image ? esc(u.image) : ''}" onchange="urlPreview('url-u','prev-u')">
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUnit()">Save Unit</button>
+    </div>
+  `);
+}
+
+function autoCostPool() {
+  const cost = +document.getElementById('f-ucost').value;
+  document.getElementById('f-upool').value = POOL_DEFAULT[cost] || 10;
+}
+
+function saveUnit() {
+  const name     = document.getElementById('f-uname').value.trim();
+  const cost     = +document.getElementById('f-ucost').value;
+  const poolSize = +document.getElementById('f-upool').value || POOL_DEFAULT[cost];
+  const image    = document.getElementById('url-u').value.trim();
+  const traits   = document.getElementById('f-utraits').value.split(',').map(t => t.trim()).filter(Boolean);
+
+  if (!name) { alert('Unit name is required.'); return; }
+
+  if (_editId) {
+    const u = S.units.find(x => x.id === _editId);
+    if (u) Object.assign(u, { name, cost, poolSize, image, traits });
+  } else {
+    S.units.push({ id: uid(), name, cost, poolSize, image, traits });
+  }
+  persist();
+  closeModal();
+  renderUnits();
+}
+
+// ════════════════════════════════════════
+// MODAL — COMP FORM
+// ════════════════════════════════════════
+function openComp(id) {
+  _editId    = id;
+  const c    = id ? S.comps.find(x => x.id === id) : null;
+  const sel  = c ? c.units : [];
+  _editStars = c ? Object.assign({}, c.unitStars || {}) : {};
+
+  showModal(`
+    <div class="mhead">
+      <h3>${c ? 'Edit' : 'Add'} Comp</h3>
+      <button class="btn btn-sm btn-ghost" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="fg">
+      <label>Comp Name *</label>
+      <input id="f-cname" placeholder="e.g. Jinx Rebels" value="${c ? esc(c.name) : ''}">
+    </div>
+    <div class="fg">
+      <label>Tier</label>
+      <select id="f-ctier">
+        ${['S','A','B','C'].map(t => `<option value="${t}"${c&&c.tier==t?' selected':''}>${t}-Tier</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg">
+      <label>Image</label>
+      <div class="img-upload">
+        <img id="prev-c" class="img-preview wide" src="${c ? imgSrc(c.image,130,65) : placeholder(130,65,'?')}">
+        <div style="flex:1">
+          <input type="file" accept="image/*" id="file-c" style="display:none" onchange="filePreview('file-c','prev-c','url-c',NaN)">
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="document.getElementById('file-c').click()">&#128247; Upload Image</button>
+          <input id="url-c" placeholder="Or paste an image URL" value="${c && c.image ? esc(c.image) : ''}" onchange="urlPreview('url-c','prev-c')">
+        </div>
+      </div>
+    </div>
+    <div class="fg">
+      <label style="display:flex;justify-content:space-between;align-items:center">
+        <span>Units in this comp (click to select)</span>
+        <span id="usel-count" style="color:var(--muted);font-size:0.75rem;font-weight:400"></span>
+      </label>
+      <input id="usel-search" placeholder="&#128269; Search by name or trait..." autocomplete="off"
+        style="margin-bottom:6px" oninput="filterUsel(this.value)">
+      <div class="unit-sel" id="usel">
+        ${S.units.length
+          ? sortedUnits().map(u => `
+            <div class="usel-chip${sel.includes(u.id)?' sel':''}" data-id="${u.id}"
+                 data-name="${esc(u.name.toLowerCase())}"
+                 data-traits="${esc((u.traits||[]).join(' ').toLowerCase())}"
+                 onclick="this.classList.toggle('sel')">
+              <img src="${imgSrc(u.image,38,38)}" alt="${esc(u.name)}"
+                   data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">
+              <span>${esc(u.name)}</span>
+              <div class="trait-badges">${(u.traits||[]).map(t=>`<span class="trait-badge">${esc(t)}</span>`).join('')}</div>
+              <div class="usel-stars" onclick="event.stopPropagation()">
+                ${[1,2,3].map(n => `<span class="ustar${(_editStars[u.id]||1)>=n?' on':''}" onclick="setEditStar('${u.id}',${n},this)">&#9733;</span>`).join('')}
+              </div>
+            </div>`).join('')
+          : '<div style="padding:14px;color:var(--muted);font-size:0.8rem">Add units first before creating a comp.</div>'}
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveComp()">Save Comp</button>
+    </div>
+  `);
+}
+
+function saveComp() {
+  const name  = document.getElementById('f-cname').value.trim();
+  const tier  = document.getElementById('f-ctier').value;
+  const image = document.getElementById('url-c').value.trim();
+  const units = [...document.querySelectorAll('#usel .sel')].map(el => el.dataset.id);
+  const unitStars = {};
+  units.forEach(uid => { unitStars[uid] = _editStars[uid] || 1; });
+
+  if (!name) { alert('Comp name is required.'); return; }
+
+  if (_editId) {
+    const c = S.comps.find(x => x.id === _editId);
+    if (c) Object.assign(c, { name, tier, image, units, unitStars });
+  } else {
+    S.comps.push({ id: uid(), name, tier, image, units, unitStars });
+  }
+  persist();
+  closeModal();
+  renderComps();
+}
+
+function setEditStar(unitId, star, el) {
+  const cur = _editStars[unitId] || 1;
+  _editStars[unitId] = cur === star ? 1 : star; // click same star = reset to 1★
+  const level = _editStars[unitId];
+  el.closest('.usel-stars').querySelectorAll('.ustar')
+    .forEach((s, i) => s.classList.toggle('on', i < level));
+}
+
+function filterUsel(q) {
+  const query = q.toLowerCase().trim();
+  const chips = document.querySelectorAll('#usel .usel-chip');
+  let visible = 0;
+  chips.forEach(chip => {
+    const match = !query
+      || chip.dataset.name.includes(query)
+      || chip.dataset.traits.includes(query);
+    chip.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  const counter = document.getElementById('usel-count');
+  if (counter) counter.textContent = query ? `${visible} / ${chips.length}` : '';
+}
+
+// ════════════════════════════════════════
+// MODAL HELPERS
+// ════════════════════════════════════════
+function showModal(html) {
+  document.getElementById('modal').innerHTML = html;
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('overlay').style.display = 'none';
+  _editId = null;
+}
+
+function overlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+function filePreview(fileId, previewId, urlId, aspect) {
+  const file = document.getElementById(fileId).files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => openCrop(e.target.result, aspect, cropped => {
+    document.getElementById(previewId).src = cropped;
+    document.getElementById(urlId).value   = cropped;
+  });
+  r.readAsDataURL(file);
+}
+
+function urlPreview(urlId, previewId) {
+  const v = document.getElementById(urlId).value.trim();
+  if (v) document.getElementById(previewId).src = v;
+}
+
+// ════════════════════════════════════════
+// CROP
+// ════════════════════════════════════════
+let _cropper = null;
+let _cropCb  = null;
+let _cropAspect = NaN;
+
+function openCrop(src, aspect, callback) {
+  _cropCb     = callback;
+  _cropAspect = aspect;
+  const img   = document.getElementById('crop-img');
+  if (_cropper) { _cropper.destroy(); _cropper = null; }
+  img.src = src;
+  document.getElementById('crop-overlay').style.display = 'flex';
+  img.onload = () => {
+    _cropper = new Cropper(img, {
+      aspectRatio:  aspect,
+      viewMode:     1,
+      autoCropArea: 0.9,
+      background:   false,
+      guides:       true,
+      center:       true,
+    });
+  };
+}
+
+function cropConfirm() {
+  if (!_cropper) return;
+  const isSquare = _cropAspect === 1;
+  const canvas   = _cropper.getCroppedCanvas(isSquare
+    ? { width: 320, height: 320 }
+    : { width: 640, height: 320 });
+  _cropCb(canvas.toDataURL('image/jpeg', 0.88));
+  _cropCleanup();
+}
+
+function cropCancel()          { _cropCleanup(); }
+function cropRotate(deg)       { _cropper && _cropper.rotate(deg); }
+function cropFlip(axis)        { _cropper && (axis==='x' ? _cropper.scaleX(-_cropper.getData().scaleX||1) : _cropper.scaleY(-_cropper.getData().scaleY||1)); }
+function cropReset()           { _cropper && _cropper.reset(); }
+
+function _cropCleanup() {
+  document.getElementById('crop-overlay').style.display = 'none';
+  if (_cropper) { _cropper.destroy(); _cropper = null; }
+  _cropCb = null;
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════
+// COMMUNITY DRAGON IMPORT
+// ════════════════════════════════════════
+const CD_BASE = 'https://raw.communitydragon.org/latest/game/';
+const CD_JSON = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
+
+// Primary: build HUD square icon URL from apiName e.g. "TFT17_Ahri"
+// CDragon path: game/assets/characters/{lower}/hud/{lower}_square.tft_set{N}.png
+function cdHudImg(apiName) {
+  if (!apiName) return '';
+  const m = apiName.match(/^TFT(\d+)_(.+)$/i);
+  if (!m) return '';
+  const lower = apiName.toLowerCase();
+  return `${CD_BASE}assets/characters/${lower}/hud/${lower}_square.tft_set${m[1]}.png`;
+}
+
+// Fallback: use icon field, converting .tex game texture → .png (CDragon converts these)
+function cdSplashImg(iconPath) {
+  if (!iconPath) return '';
+  let p = iconPath.replace(/\\/g, '/').replace(/\.tex$/i, '.png');
+  p = p.replace(/^\/+lol-game-data\/assets\//i, '');
+  p = p.replace(/^\/+/, '');
+  return CD_BASE + p.toLowerCase();
+}
+
+// Chained onerror: tries data-fb fallback URL, then shows a letter placeholder.
+function imgFallback(el) {
+  el.onerror = null;
+  const fb = el.dataset.fb;
+  if (fb) {
+    el.dataset.fb = '';
+    el.onerror = imgFallback;
+    el.src = fb;
+  } else {
+    const s = Math.max(el.width || 68, el.height || 68, 56);
+    el.src = placeholder(s, s, el.dataset.label || '?');
+  }
+}
+
+function openImportModal() {
+  showModal(`
+    <div class="mhead">
+      <h3>&#9881; Import from Community Dragon</h3>
+      <button class="btn btn-sm btn-ghost" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <p style="color:var(--muted);font-size:0.83rem;margin-bottom:16px;line-height:1.5">
+      Fetches the current TFT set's champions (names, costs, traits, images) from
+      <strong style="color:var(--text)">Community Dragon</strong> — a free community-maintained data source.
+      Requires internet. Existing units will be replaced.
+    </p>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="btn-fetch" class="btn btn-primary" onclick="doFetch()" style="flex:1">&#8659; Fetch Automatically</button>
+    </div>
+    <div id="import-status" style="font-size:0.83rem;min-height:20px;margin-bottom:12px"></div>
+    <details id="manual-section">
+      <summary style="cursor:pointer;color:var(--muted);font-size:0.82rem;margin-bottom:8px">&#9660; Manual paste (if auto-fetch fails)</summary>
+      <p style="color:var(--muted);font-size:0.78rem;margin-bottom:8px">
+        Open <a href="${CD_JSON}" target="_blank" style="color:var(--accent)">${CD_JSON}</a>,
+        select all (Ctrl+A), copy, paste below.
+      </p>
+      <textarea id="manual-json" rows="5" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px;color:var(--text);font-size:0.78rem;font-family:monospace" placeholder="Paste JSON here..."></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" onclick="doManualImport()">&#10003; Import Pasted JSON</button>
+      </div>
+    </details>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+}
+
+async function doFetch() {
+  const btn    = document.getElementById('btn-fetch');
+  const status = document.getElementById('import-status');
+  btn.disabled = true;
+  status.innerHTML = '<span style="color:var(--muted)">&#9679; Fetching data...</span>';
+
+  let data;
+  const proxies = [
+    CD_JSON,
+    'https://corsproxy.io/?' + encodeURIComponent(CD_JSON),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(CD_JSON),
+  ];
+
+  for (const url of proxies) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) continue;
+      data = await res.json();
+      break;
+    } catch(e) { /* try next */ }
+  }
+
+  if (!data) {
+    status.innerHTML = '<span style="color:var(--danger)">&#x2715; Auto-fetch failed (CORS from local file). Use the manual paste below.</span>';
+    document.getElementById('manual-section').open = true;
+    btn.disabled = false;
+    return;
+  }
+
+  applyImport(data, status);
+  btn.disabled = false;
+}
+
+function doManualImport() {
+  const raw = document.getElementById('manual-json').value.trim();
+  if (!raw) { alert('Paste the JSON first.'); return; }
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { alert('Invalid JSON.'); return; }
+  applyImport(data, document.getElementById('import-status'));
+}
+
+function applyImport(data, statusEl) {
+  // Find latest set (highest numeric key in data.sets)
+  const sets = data.sets || {};
+  const setNums = Object.keys(sets).map(Number).filter(n => !isNaN(n)).sort((a,b) => b-a);
+  if (!setNums.length) { statusEl.innerHTML = '<span style="color:var(--danger)">No set data found.</span>'; return; }
+
+  const latestNum = setNums[0];
+  const set       = sets[latestNum];
+  const champs    = (set.champions || []).filter(c =>
+    c.cost >= 1 && c.cost <= 5 && c.name && c.traits && c.traits.length
+  );
+
+  if (!champs.length) { statusEl.innerHTML = '<span style="color:var(--danger)">No valid champions found.</span>'; return; }
+
+  if (S.units.length && !confirm(`Import ${champs.length} champions from Set ${latestNum}?\nThis will replace all existing units and reset the pool.`)) return;
+
+  S.units = champs.map(c => ({
+    id:       uid(),
+    name:     c.name,
+    cost:     c.cost,
+    poolSize: POOL_DEFAULT[c.cost] || 10,
+    traits:   c.traits || [],
+    image:    cdHudImg(c.apiName),
+    imageFb:  cdSplashImg(c.icon || ''),
+  }));
+  S.pool = {};
+  persist();
+  closeModal();
+  renderUnits();
+  renderPool();
+  statusEl && (statusEl.innerHTML = '');
+  alert(`Imported ${S.units.length} champions from TFT Set ${latestNum}!`);
+}
+
+// ════════════════════════════════════════
+// SCOUT
+// ════════════════════════════════════════
+function renderScout() {
+  const el = document.getElementById('scout-body');
+  if (!el) return;
+
+  // Build comp options once
+  const opts = `<option value="">— Unknown —</option>` +
+    S.comps.map(c => `<option value="${c.id}">${esc(c.name)} (${c.tier})</option>`).join('');
+
+  // Player rows
+  const rows = S.scout.map((p, i) => {
+    const selComp = p.compId ? S.comps.find(c => c.id === p.compId) : null;
+    const unitImgs = selComp
+      ? selComp.units.map(uid => {
+          const u = S.units.find(x => x.id === uid);
+          return u ? `<img src="${imgSrc(u.image,24,24)}" title="${esc(u.name)}" data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">` : '';
+        }).join('')
+      : '<span style="color:var(--muted);font-size:0.75rem">—</span>';
+
+    return `
+    <tr class="scout-row">
+      <td><input class="scout-name" value="${esc(p.name)}" onchange="setScoutName(${i},this.value)" maxlength="8"></td>
+      <td><select class="scout-comp-sel" onchange="setScoutComp(${i},this.value)">
+        ${opts.replace(`value="${p.compId||''}"`, `value="${p.compId||''}" selected`)}
+      </select></td>
+      <td><div class="scout-units">${unitImgs}</div></td>
+    </tr>`;
+  }).join('');
+
+  // Contested units summary
+  const unitDemand = {};
+  S.scout.forEach(p => {
+    if (!p.compId) return;
+    const oc = S.comps.find(c => c.id === p.compId);
+    if (!oc) return;
+    oc.units.forEach(uid => { unitDemand[uid] = (unitDemand[uid] || 0) + 1; });
+  });
+  const contested = Object.entries(unitDemand)
+    .filter(([,n]) => n >= 2)
+    .sort(([,a],[,b]) => b - a)
+    .map(([uid, n]) => {
+      const u = S.units.find(x => x.id === uid);
+      if (!u) return '';
+      return `<span class="cont-chip">
+        <img src="${imgSrc(u.image,18,18)}" data-fb="${esc(u.imageFb||'')}" data-label="${esc(u.name.charAt(0))}" onerror="imgFallback(this)">
+        ${esc(u.name)} <span class="cnt">${n}x</span>
+      </span>`;
+    }).join('');
+
+  el.innerHTML = `
+    <table class="scout-table">
+      <thead><tr>
+        <th style="width:70px">Player</th>
+        <th>Playing</th>
+        <th>Their Units</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${contested ? `<div class="contested-box">
+      <h4>&#9888; Contested units (2+ opponents)</h4>
+      <div class="contested-chips">${contested}</div>
+    </div>` : ''}`;
+}
+
+function setScoutName(i, val) {
+  S.scout[i].name = val.trim() || `P${i+1}`;
+  persist();
+}
+
+function setScoutComp(i, compId) {
+  S.scout[i].compId = compId || null;
+  persist();
+  renderScout();
+  if (document.getElementById('tab-rec').classList.contains('active')) renderRec();
+}
+
+function resetScout() {
+  if (!confirm('Clear all scout entries?')) return;
+  S.scout = defaultScout();
+  persist();
+  renderScout();
+  if (document.getElementById('tab-rec').classList.contains('active')) renderRec();
+}
+
+// ════════════════════════════════════════
+// EXPORT / IMPORT
+// ════════════════════════════════════════
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `tft-data-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!d.units || !d.comps) { alert('Invalid backup file.'); return; }
+      if (!confirm(`Import will replace all current data.\nFound ${d.units.length} units and ${d.comps.length} comps.\nContinue?`)) return;
+      S.units   = d.units   || [];
+      S.comps   = d.comps   || [];
+      S.pool    = d.pool    || {};
+      S.myUnits = d.myUnits || {};
+      S.scout   = d.scout   || defaultScout();
+      persist();
+      renderUnits();
+      renderComps();
+      renderPool();
+      renderScout();
+      alert('Import successful!');
+    } catch(err) { alert('Could not read file — make sure it\'s a valid TFT backup JSON.'); }
+  };
+  r.readAsText(file);
+  e.target.value = ''; // reset input so same file can be re-imported
+}
+
+// ════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════
+hydrate();
+renderUnits();
+renderComps();
+renderPool();
+renderScout();
+</script>
+</body>
+</html>
